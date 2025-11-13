@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="kk">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Төртеу Түгел — Ойын</title>
+    <style>
+        :root{--bg:#f7f8fb;--card:#ffffff;--accent:#2b6cb0;--ok:#2f855a;--bad:#e53e3e;--warn:#d69e2e}
+        body{font-family:Inter, system-ui, Arial, sans-serif;background:var(--bg);margin:0;padding:24px;color:#111;display:flex;justify-content:center;align-items:center;min-height:100vh}
+        .game{background:var(--card);padding:20px;border-radius:16px;box-shadow:0 6px 18px rgba(16,24,40,0.08);text-align:center;max-width:500px;width:100%}
+        h1{font-size:24px;margin-bottom:20px}
+        .bank{display:grid;grid-template-columns:repeat(4,auto);gap:12px;justify-content:center}
+        .tile{background:#f1f5f9;padding:12px 18px;border-radius:10px;cursor:grab;user-select:none;border:1px solid rgba(0,0,0,0.04);transition:0.2s}
+        .tile:hover{background:#e2e8f0;transform:scale(1.05)}
+        .tile.selected{background:#fcd34d !important;}
+        .tile.correct{background:#c6f6d5 !important;}
+        .tile.wrong{background:#fed7d7 !important;}
+        button{background:var(--accent);color:#fff;border:none;padding:10px 16px;border-radius:8px;cursor:pointer;margin-top:20px}
+        .result{margin-top:16px;padding:12px;border-radius:10px}
+        .success{background:#f0fff4;border:1px solid #c6f6d5;color:var(--ok)}
+        .fail{background:#fff5f5;border:1px solid #fed7d7;color:var(--bad)}
+        .warnbox{background:#fffbea;border:1px solid #faf089;color:var(--warn)}
+        #solved{margin-bottom:20px;text-align:center}
+        .groupBox{margin-bottom:10px;padding:10px 0;border-radius:8px}
+        .groupTitle{font-weight:600;margin-bottom:4px}
+        .groupWords{font-size:14px;color:#333}
+    </style>
+</head>
+<body>
+    <div class="game">
+        <h1>Төртеу Түгел</h1>
+        <div id="solved"></div>
+        <div id="bank" class="bank"></div>
+        <button id="submitBtn">Тапсыру</button>
+        <div id="feedback"></div>
+    </div>
+
+    <script>
+        const data = {
+            groups: [
+                {name:'_жан', words:['Дос','Ай','Бек','Рыс'], color:'#faf089'},
+                {name:'Қайрат Нұртас әндері', words:['Байқа','Екеуміз','Бәр дұрыс па?','Мейлі'], color:'#90cdf4'},
+                {name:'Азартник актерлары', words:['Жәнібек','Нұрсұлтан','Ерлан','Мақсат'], color:'#fbb6ce'},
+                {name:'Мираждағы позициялар', words:['Телевизор','Терезе','Кілем','Ас бөлме'], color:'#c6f6d5'}
+            ]
+        };
+
+        let allWords = data.groups.map(g=>g.words).flat();
+        let attempts = 5;
+        const bankEl=document.getElementById('bank');
+        const feedbackEl=document.getElementById('feedback');
+        const solvedEl=document.getElementById('solved');
+
+        function shuffle(a){for(let i=a.length-1;i>0;i--){let j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+
+        function render(){
+            bankEl.innerHTML='';
+            const tiles = shuffle(allWords.slice());
+            tiles.forEach(t=>{
+                const d=document.createElement('div');
+                d.className='tile';
+                d.textContent=t;
+                d.addEventListener('click',()=>{
+                    d.classList.toggle('selected');
+                    if(document.querySelectorAll('.selected').length>4){
+                        d.classList.remove('selected');
+                    }
+                });
+                bankEl.appendChild(d);
+            });
+        }
+
+        document.getElementById('submitBtn').addEventListener('click',()=>{
+            const selectedEls=Array.from(document.querySelectorAll('.selected'));
+            const selected=selectedEls.map(x=>x.textContent);
+            if(selected.length!==4){
+                feedbackEl.innerHTML='<div class="result fail">4 сөз таңдаңыз!</div>';
+                return;
+            }
+
+            let foundGroup=null;
+            data.groups.forEach(g=>{
+                const correctCount = g.words.filter(w=>selected.includes(w)).length;
+                if(correctCount===4){foundGroup=g;}
+            });
+
+            if(foundGroup){
+                feedbackEl.innerHTML='<div class="result success">Дұрыс топ! 🎉</div>';
+                selectedEls.forEach(x=>{
+                    x.classList.remove('selected');
+                    x.classList.add('correct');
+                    x.style.background=foundGroup.color;
+                });
+                allWords=allWords.filter(w=>!foundGroup.words.includes(w));
+
+                const box=document.createElement('div');
+                box.className='groupBox';
+                box.innerHTML=`<div class='groupTitle'>${foundGroup.name}</div><div class='groupWords'>${foundGroup.words.join(' • ')}</div>`;
+                box.style.background=foundGroup.color;
+                solvedEl.appendChild(box);
+
+                setTimeout(()=>render(),800);
+                return;
+            }
+
+            let maxCorrect=0;
+            data.groups.forEach(g=>{
+                const c=g.words.filter(w=>selected.includes(w)).length;
+                if(c>maxCorrect) maxCorrect=c;
+            });
+
+            if(maxCorrect===3){
+                feedbackEl.innerHTML='<div class="result warnbox">1 сөз қате!</div>';
+            } else if(maxCorrect===2 || maxCorrect<=1){
+                feedbackEl.innerHTML='<div class="result fail">Дұрыс емес.</div>';
+            }
+
+            attempts--;
+            if(attempts<=0){
+                feedbackEl.innerHTML='<div class="result fail">Мүмкіндіктер таусылды 😢</div>';
+                document.getElementById('submitBtn').disabled=true;
+            }
+
+            selectedEls.forEach(x=>x.classList.remove('selected'));
+        });
+
+        render();
+    </script>
+</body>
+</html>
+
+
+
